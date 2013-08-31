@@ -69,8 +69,10 @@ sub register {
             my %data = ();
             while( my ($panel, $gen) = each %{ $self->panels } ) {
                 next unless ref($gen);
+
+                my $out = $gen->($c);
                 
-                $data{$panel} = $gen->($c);
+                $data{$panel} = $out if defined $out;
             }
 
             $c->res->body(
@@ -109,8 +111,8 @@ __DATA__
 
 <style type="text/css">
 #devpanels { display: none; position: fixed; top: 0px; right: 0px; width: 100px; opacity: 0.8; background-color: black; color: #DDD; z-index: 1000002; height: 100%; }
-#devpanels-mini { position: fixed; top: 80px; right: 0px; padding: 10px; opacity: 0.8; background-color: black; color: #DDD; z-index: 1000001; text-align: centre; font-size: 25px; font-weight: bold; }
-#devpanels div { float: left; padding: 10px 20px; margin: 0px; width: 100%; border: 0px 1px solid black; }
+#devpanels-mini { position: fixed; top: 80px; right: 0px; padding: 10px; opacity: 0.8; background-color: black; color: #DDD; z-index: 1000001; text-align: centre; font-size: 25px; font-weight: bold; cursor: pointer; }
+#devpanels div { float: left; padding: 10px 20px; margin: 0px; width: 100%; border: 0px 1px solid black; cursor: pointer; }
 #devpanels div:hover { background-color: #333; }
 #devpanel-overlay { display:none; position: fixed; top: 0px; left: 0px; right: 100px; height: 100%; background-color: black; opacity: 0.95; color: white; padding: 10px 20px; z-index: 1000000; overflow-y: auto; }
 #devpanel-overlay .dp-close { position: fixed; bottom: 0px; right: 115px; }
@@ -185,19 +187,44 @@ __END__
 
 =head1 NAME
 
-Mojolicious::Plugin::DevPanels - Mojolicious Plugin
+Mojolicious::Plugin::DevPanels - Debug panels for Mojolicious
 
 =head1 SYNOPSIS
 
   # Mojolicious
-  $self->plugin('DevPanels');
+  $self->plugin( 'DevPanels',
+
+    # A data panel, will be displayed using nested lists
+    mystash => sub {
+      my $c = shift;
+
+      return { key1 => "value1", key2 => "value2" };
+    },
+
+    # A raw html panel
+    mytemplate => sub {
+      my $c = shift;
+
+      return $c->render( 'example/welcome', partial => 1 );
+    },
+
+    # Disable one of the default panels
+    config => undef,
+  );
 
   # Mojolicious::Lite
   plugin 'DevPanels';
 
 =head1 DESCRIPTION
 
-L<Mojolicious::Plugin::DevPanels> is a L<Mojolicious> plugin.
+L<Mojolicious::Plugin::DevPanels> is a L<Mojolicious> development plugin,
+that provides an easy way to dump data, structures, or even partial templates
+in a panel overlay.
+
+It adds an after_dispatch hook, tries to detect html pages, and injects a
+crappy, simple html panel at the end. While this approach is broken by design,
+it works for quickly debugging error pages, flash messages, and so on by looking
+at the stash / config / session data (see L<DEFAULT PANELS>).
 
 =head1 METHODS
 
@@ -210,9 +237,36 @@ L<Mojolicious::Plugin> and implements the following new ones.
 
 Register plugin in L<Mojolicious> application.
 
+=head1 DEFAULT PANELS
+
+=over
+
+=item stash
+
+Dump of the stash, excluding keys starting with "mojo." and "config".
+
+=item config
+
+Dump of the configuration
+
+=item session
+
+Dump of the user session
+
+=item log
+
+Dump of the logs, captured the same way as L<Mojolicious::Plugin::ConsoleLogger>
+
+=item mojo_flags
+
+Dump of the "mojo." keys on the stash.
+
+=back
+
 =head1 SEE ALSO
 
 L<Mojolicious>, L<Mojolicious::Guides>, L<http://mojolicio.us>.
+L<Mojolicious::Plugin::ConsoleLogger>.
 
 =cut
 
