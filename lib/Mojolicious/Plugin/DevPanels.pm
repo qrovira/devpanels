@@ -17,7 +17,7 @@ has panels => sub {
         },
         stash => sub {
             my $c = shift;
-            my @keys = grep !/^(:?mojo\.|config)/ => keys %{ $c->stash };
+            my @keys = grep !/^(:?mojo\.|config|devpanels)/ => keys %{ $c->stash };
 
             return { map { $_ => $c->stash($_) } @keys };
         },
@@ -54,6 +54,16 @@ sub register {
     $self->hook_log($app)
         if $self->panels->{log};
 
+    $app->helper(
+        devpanel => sub {
+            my $c = shift;
+            my $name = shift;
+            my $data = shift;
+
+            $c->stash->{devpanels}{$name} = $data;
+        }
+    );
+
     $app->hook(
         after_dispatch => sub {
             my $c = shift;
@@ -75,6 +85,11 @@ sub register {
                 my $out = $gen->($c);
                 
                 $data{$panel} = $out if defined $out;
+            }
+
+            my $extra_panels = $c->stash('devpanels');
+            foreach my $panel ( keys %{ $extra_panels // {} } ) {
+                $data{ $panel } = $extra_panels->{ $panel };
             }
 
             $c->res->body(
