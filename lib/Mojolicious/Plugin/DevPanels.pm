@@ -11,7 +11,7 @@ has panels => sub {
         log => sub {
             my $c = shift;
             my $logs = $self->logs;
-            $self->logs({});
+            $self->logs([]);
 
             return $logs;
         },
@@ -40,7 +40,7 @@ has panels => sub {
     };
 };
 
-has logs => sub { return {}; };
+has logs => sub { return []; };
 
 sub register {
     my ($self, $app, $opts) = @_;
@@ -67,7 +67,6 @@ sub register {
     $app->hook(
         after_dispatch => sub {
             my $c = shift;
-            my $logs = $self->logs;
 
             # Leave static content untouched
             return if $c->stash('mojo.static');
@@ -107,12 +106,12 @@ sub hook_log {
     # override Mojo::Log->log
     no strict 'refs';
     my $stash = \%{"Mojo::Log::"};
-    my $orig  = delete $stash->{"log"};
+    my $orig  = delete $stash->{"append"};
 
-    *{"Mojo::Log::log"} = sub {
-        push @{$self->logs->{$_[1]}} => $_[-1];
+    *{"Mojo::Log::append"} = sub {
+        push @{$self->logs} => $_[1];
 
-        # Original Mojo::Log->log
+        # Original Mojo::Log->append
         $orig->(@_);
     };
 }
@@ -135,6 +134,7 @@ __DATA__
 #devpanel-overlay .dp-close { position: fixed; bottom: 0px; right: 115px; }
 #devpanel-overlay ul { list-style: none; margin-left: 8px; }
 #devpanel-overlay ul ul { border-left: 1px solid white; padding-left: 8px; border-radius: 0px 6px; }
+.devpanel-log { white-space: pre-wrap; }
 </style>
 
 <div id="devpanels">
@@ -150,6 +150,7 @@ __DATA__
 
 <script type="text/javascript" src="http://code.jquery.com/jquery-latest.pack.js"></script>
 <script type="text/javascript">
+(function() {
   var panels = <%== $json_panels %>;
 
   var dp = jQuery('#devpanels');
@@ -164,14 +165,11 @@ __DATA__
           ov.hide();
           mdp.show();
       } else {
-          console.groupCollapsed(name);
-          console.log(panels[name]);
-          console.groupEnd(name);
           ov.html("<div class=\"dp-close\">Close</div>");
           if( typeof(panels[name]) == "string" ) {
               ov.prepend(panels[name]);
           } else {
-              ov.prepend(parseObject(panels[name]));
+              ov.prepend(parseObject(name));
           }
           ov.show();
           ov.find('.dp-close').click(function() { ov.hide(); });
@@ -180,8 +178,12 @@ __DATA__
 
   mdp.click( function() { dp.show(); mdp.hide(); } );
 
-  function parseObject(obj) {
+  function parseObject(name) {
+      var obj = panels[name];
+      var container = document.createElement("DIV");
+      container.classList.add("devpanel-"+name);
       var ol = document.createElement("UL");
+      container.appendChild(ol);
       for(var k in obj) {
           var v = obj[k];
           var li = document.createElement("LI");
@@ -193,8 +195,9 @@ __DATA__
           }
           ol.appendChild(li);
       }
-      return ol;
+      return container;
   }
+})();
     
 </script>
 
