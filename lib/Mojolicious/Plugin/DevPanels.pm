@@ -1,6 +1,8 @@
 package Mojolicious::Plugin::DevPanels;
 use Mojo::Base 'Mojolicious::Plugin';
 
+use Mojo::JSON qw/ encode_json /;
+
 our $VERSION = '0.01';
 
 has panels => sub {
@@ -77,7 +79,7 @@ sub register {
 
             $c->res->body(
                 $c->res->body .
-                $c->render( 'devpanels', panels => \%data, json_panels => Mojo::JSON->new->encode(\%data), partial => 1 )
+                $c->render_to_string( 'devpanels', panels => \%data, json_panels => encode_json(\%data) )
             );
         }
     );
