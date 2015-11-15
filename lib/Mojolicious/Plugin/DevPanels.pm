@@ -75,7 +75,8 @@ sub register {
             return if $app->mode ne 'development';
 
             # Mangle only html documents if possible
-            return unless $c->res->headers->content_type =~ /html/;
+            my $content_type = $c->res->headers->content_type;
+            return unless $content_type && $content_type =~ /html/;
 
             my %data = ();
             while( my ($panel, $gen) = each %{ $self->panels } ) {
@@ -166,11 +167,13 @@ __DATA__
           mdp.show();
       } else {
           ov.html("<div class=\"dp-close\">Close</div>");
+          var container = jQuery("<div class=\"devpanel-"+name+"\"></div>");
           if( typeof(panels[name]) == "string" ) {
-              ov.prepend(panels[name]);
+              container.html(panels[name]);
           } else {
-              ov.prepend(parseObject(name));
+              container.html(parseObject(panels[name]));
           }
+          ov.prepend(container);
           ov.show();
           ov.find('.dp-close').click(function() { ov.hide(); });
       }
@@ -178,12 +181,8 @@ __DATA__
 
   mdp.click( function() { dp.show(); mdp.hide(); } );
 
-  function parseObject(name) {
-      var obj = panels[name];
-      var container = document.createElement("DIV");
-      container.classList.add("devpanel-"+name);
+  function parseObject(obj) {
       var ol = document.createElement("UL");
-      container.appendChild(ol);
       for(var k in obj) {
           var v = obj[k];
           var li = document.createElement("LI");
@@ -195,7 +194,7 @@ __DATA__
           }
           ol.appendChild(li);
       }
-      return container;
+      return ol;
   }
 })();
     
